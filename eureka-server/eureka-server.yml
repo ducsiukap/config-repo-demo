@@ -1,0 +1,35 @@
+server:
+  port: 8761
+
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    # Eureka-Server không tự register chính nó
+    register-with-eureka: false
+    # Eureka-Server không fetch registry từ chính nó
+    fetch-registry: false
+    # Eureka-Server default url
+    service-url:
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
+      # -> http://host:port/eureka/
+
+  server:
+    # enable-self-preservation -> chế độ heartbeat
+    #   - mỗi service tự gửi heartbeat mỗi 30s
+    #   - 90s không có heartbeat -> die -> remove khỏi registry
+    # (có thể tắt thi dev -> mất heartbeat coi là die)
+    # (nên bật lại ở production)
+    enable-self-preservation: false
+    # xóa instance không heartbeat (die) sau 10s
+    # production nên để 90s default
+    eviction-interval-timer-in-ms: 10000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      show-details: always
