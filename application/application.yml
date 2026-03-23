@@ -1,0 +1,21 @@
+# appication.yml -> shared cho tất cả các services
+logging:
+  level:
+    root: INFO
+    com.vduczz: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, refresh, metrics
+  endpoint:
+    health:
+      show-details: always
+
+# DB
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
