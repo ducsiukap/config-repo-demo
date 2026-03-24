@@ -54,7 +54,7 @@ spring:
                   args:
                     retries: 3
                     statuses: BAD_GATEWAY, SERVICE_UNAVAILABLE # retry only with errorcode: 502, 503
-                    method: GET # only GET request can be retried
+                    methods: GET # only GET request can be retried
                     backoff:
                       firstBackoff: 100ms # lần 1, chờ 100ms
                       maxBackoff: 1000ms
