@@ -58,7 +58,7 @@ spring:
                     backoff:
                       firstBackoff: 100ms # lần 1, chờ 100ms
                       maxBackoff: 1000ms
-                      factor: 1.5
+                      factor: 2
                       basedOnPreviousValue: false
 
 
