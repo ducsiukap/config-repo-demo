@@ -32,6 +32,33 @@ spring:
             # DedupeResponseHeader -> loại header trùng
             - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
 
+          # Routing
+          routes:
+            - id: user-auth-route
+              uri: lb://user-service
+              predicates:
+                - Path=/api/auth/**
+              # filters:
+
+            # protected route
+            - id: product-admin-route
+              uri: lb://product-service
+              predicates:
+                - Path=/api/products/**
+                - Method=POST,PUT,PATCH,DELETE
+              filters:
+                # require login only (AuthFilter.Config(requiredRole=null))
+                # - AuthFilter
+                - name: AuthFilter
+                  args:
+                    requiredRole: ADMIN
+
+            - id: product-public-route
+              uri: lb://product-service
+              predicates:
+                - Path=/api/products/**
+                - Method=GET,HEAD
+
 # Đăng ký gateway vào Eureka server
 # -> cho phép:
 #   + gọi service qua tên
