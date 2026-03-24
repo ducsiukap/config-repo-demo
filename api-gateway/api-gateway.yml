@@ -1,0 +1,59 @@
+server:
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          # tự động tạo route từ Eureka
+          discovery:
+            locator:
+              # nếu true -> Gateway tự tạo route dựa trên service name từ Eureka
+              #     ex: http://gateway/product-service/**
+              # false -> tắt auto-routing -> Sẽ tự định nghĩa route thủ công (control tốt hơn)
+              enabled: false
+
+          # CORS
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowed-origins: "*"
+                allowed-methods: "GET, POST, PUT, DELETE, OPTIONS"
+                allowed-headers: "*"
+                # Không cho gửi cookie / credentials
+                # nếu dùng login session thì phải set true
+                allow-credentials: false
+          default-filters:
+            # fix CORS duplicate header khi:
+            #   + Gateway thêm header
+            #   + Service downstream cũng thêm header
+            # -> bị duplicate -> browser chặn
+            # DedupeResponseHeader -> loại header trùng
+            - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+
+# Đăng ký gateway vào Eureka server
+# -> cho phép:
+#   + gọi service qua tên
+#   + load balancing khi có nhiều instance
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    prefer-ip-address: true
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, gateway, metrics
+  endpoint:
+    gateway:
+      # Cho phép debug Gateway
+      # Xem route, refresh route, debug filter
+      enabled: true
