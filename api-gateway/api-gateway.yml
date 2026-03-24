@@ -32,13 +32,35 @@ spring:
             # DedupeResponseHeader -> loại header trùng
             - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
 
-          # Routing
+          # // -------------------------
+          # // ROUTING
           routes:
             - id: user-auth-route
               uri: lb://user-service
               predicates:
                 - Path=/api/auth/**
-              # filters:
+              filters:
+                # --------------------------
+                # Rate Limiter
+                - name: RequestRateLimiter
+                  args:
+                    - redis-rate-limiter.replenishRate: 50
+                    - redis-rate-limiter.burstCapacity: 100
+                    # Public route → rate limit theo IP
+                    - key-resolver: "#{@ipKeyResolver}"
+                # -------------------------
+                # Retry
+                - name: Retry
+                  args:
+                    retries: 3
+                    statuses: BAD_GATEWAY, SERVICE_UNAVAILABLE # retry only with errorcode: 502, 503
+                    method: GET # only GET request can be retried
+                    backoff:
+                      firstBackoff: 100ms # lần 1, chờ 100ms
+                      maxBackoff: 1000ms
+                      factor: 1.5
+                      basedOnPreviousValue: false
+
 
             # protected route
             - id: product-admin-route
@@ -59,7 +81,73 @@ spring:
                 - Path=/api/products/**
                 - Method=GET,HEAD
 
-# Đăng ký gateway vào Eureka server
+            - id: order-route
+              uri: lb://order-service
+              predicates:
+                - Path=/api/orders/**
+              filters:
+                - AuthFilter
+                # -----------------------
+                # Circuit Breaker
+                - name: CircuitBreaker
+                  args:
+                    name: order-service-cb
+                    # khi OPEN, forward tới fallback endpoint
+                    fallbackUri: forward:/fallback/order-service
+                # -----------------------
+                # Rate Limiting
+                - name: RequestRateLimiter
+                  args:
+                    # 20req/s/user
+                    redis-rate-limiter.replenishRate: 20
+                    redis-rate-limiter.burstCapacity: 40
+                    redis-rate-limiter.requestedTokens: 1
+                    # protected route -> limits by userId
+                    key-resolver: "#{@userKeyResolver}"
+
+
+            - id: payment-route
+              uri: lb://payment-service
+              predicates:
+                - Path=/api/payments/**
+              filters:
+                - AuthFilter
+                - name: CircuitBreaker
+                  args:
+                    name: payment-service-cb
+                    fallbackUri: forward:/fallback/payment-service
+
+
+#  /* ========================================
+#  * RESILIENCE
+#  ======================================== */
+resilience4j:
+  circuitbreaker:
+    instances:
+      order-service-cb:
+        failure-rate-threshold: 50
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+      payment-service-cb:
+        failure-rate-threshold: 50
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        wait-duration-in-open-state: 15s
+
+  timelimiter:
+    instances:
+      order-service-cb:
+        timeout-duration: 5s
+      payment-service-cb:
+        timeout-duration: 8s
+
+
+
+#  /* ========================================
+#  * Đăng ký gateway vào Eureka server
+#  ======================================== */
 # -> cho phép:
 #   + gọi service qua tên
 #   + load balancing khi có nhiều instance
@@ -70,10 +158,16 @@ eureka:
   instance:
     prefer-ip-address: true
 
+#  /* ========================================
+#  * JWT
+#  ======================================== */
 app:
   jwt:
     secret: ${JWT_SECRET}
 
+#  /* ========================================
+#  * ACTUATOR
+#  ======================================== */
 management:
   endpoints:
     web:
