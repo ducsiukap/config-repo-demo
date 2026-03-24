@@ -44,10 +44,10 @@ spring:
                 # Rate Limiter
                 - name: RequestRateLimiter
                   args:
-                    - redis-rate-limiter.replenishRate: 50
-                    - redis-rate-limiter.burstCapacity: 100
+                    redis-rate-limiter.replenishRate: 50
+                    redis-rate-limiter.burstCapacity: 100
                     # Public route → rate limit theo IP
-                    - key-resolver: "#{@ipKeyResolver}"
+                    key-resolver: "#{@ipKeyResolver}"
                 # -------------------------
                 # Retry
                 - name: Retry
